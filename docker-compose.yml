@@ -1,0 +1,42 @@
+# 로컬 개발/평가용 인프라
+# 실행: docker compose up -d
+# 포트는 다른 로컬 컨테이너와 겹치지 않도록 3307 / 5433 사용
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: inframe-mysql
+    environment:
+      MYSQL_DATABASE: inframe
+      MYSQL_USER: inframe
+      MYSQL_PASSWORD: inframe
+      MYSQL_ROOT_PASSWORD: root
+      TZ: Asia/Seoul
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - inframe-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      retries: 20
+
+  pgvector:
+    image: pgvector/pgvector:pg17
+    container_name: inframe-pgvector
+    environment:
+      POSTGRES_DB: inframe_vector
+      POSTGRES_USER: inframe
+      POSTGRES_PASSWORD: inframe
+    ports:
+      - "5433:5432"
+    volumes:
+      - inframe-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inframe -d inframe_vector"]
+      interval: 5s
+      retries: 20
+
+volumes:
+  inframe-mysql-data:
+  inframe-pg-data:
