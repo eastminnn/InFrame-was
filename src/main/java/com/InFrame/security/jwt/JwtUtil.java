@@ -3,10 +3,9 @@ package com.InFrame.security.jwt;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +17,7 @@ import org.springframework.util.StringUtils;
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -82,23 +82,19 @@ public class JwtUtil {
         return null;
     }
 
-    public boolean validateToken(String token) { // 토큰 검증
+    /**
+     * 토큰을 검증하고 클레임을 반환한다. 검증에 실패하면 empty.
+     * jjwt의 모든 검증 예외는 JwtException 하위이므로 한 번에 처리한다.
+     * (기존 코드는 java.lang.SecurityException 을 잡고 있어 SignatureException 이 누락됐음)
+     */
+    public Optional<Claims> parseClaims(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
-            return true;
-        } catch (SecurityException | MalformedJwtException e) {
-            log.error("유효하지 않은 JWT 서명입니다.");
+            return Optional.of(Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody());
         } catch (ExpiredJwtException e) {
-            log.error("만료된 JWT 토큰입니다.");
-        } catch (UnsupportedJwtException e) {
-            log.error("지원되지 않는 JWT 토큰입니다.");
-        } catch (IllegalArgumentException e) {
-            log.error("JWT 클레임이 비어있습니다.");
+            log.debug("만료된 JWT 토큰입니다.");
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("유효하지 않은 JWT 토큰입니다: {}", e.getClass().getSimpleName());
         }
-        return false;
-    }
-
-    public Claims getUserInfoFromToken(String token) {
-        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+        return Optional.empty();
     }
 }
