@@ -17,13 +17,17 @@ import com.InFrame.domains.review.repository.ReviewRepository;
 import com.InFrame.domains.user.entity.User;
 import com.InFrame.domains.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,45 +41,71 @@ public class LikeService {
     private final HostLikeRepository hostLikeRepository;
     private final ReviewRepository reviewRepository;
 
-    @Transactional
+    /*
+     * 좋아요 토글 (동시 요청 대비)
+     * 1) 조건부 DELETE: 지운 행이 있으면 '취소'. 이미 다른 요청이 지웠다면 0건일 뿐 예외 없음
+     * 2) 지운 행이 없으면 INSERT: 동시에 들어온 요청이 먼저 넣었다면 유니크 제약 위반 → '이미 좋아요'로 처리
+     *
+     * 바깥 트랜잭션 없이(NOT_SUPPORTED) 실행한다. 트랜잭션 안에서 제약 위반을 catch 해도
+     * 트랜잭션이 rollback-only 로 표시되어 커밋 시 UnexpectedRollbackException 이 나기 때문.
+     * DELETE / INSERT 는 각각 리포지토리의 트랜잭션에서 실행된다.
+     *
+     * 이미 지워진 행을 DELETE 하면 InnoDB 가 그 자리에 갭 락을 걸고, 이어지는 INSERT 끼리 데드락이 날 수 있다.
+     * 토글은 처음부터 다시 실행해도 안전하므로 데드락이면 재시도한다 (MySQL 권장 방식).
+     */
+    private static final int MAX_DEADLOCK_RETRIES = 3;
+
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public boolean toggleExperienceLike(Long userId, Long experienceId) {
         User user = findUserById(userId);
         Experience experience = findExperienceById(experienceId);
 
-        // 이미 '좋아요'를 눌렀는지 확인
-        Optional<ExperienceLike> like = experienceLikeRepository.findByUserAndExperience(user, experience);
-
-        if (like.isPresent()) {
-            experienceLikeRepository.delete(like.get());
-            return false;
-        } else {
-            ExperienceLike newLike = ExperienceLike.builder()
-                    .user(user)
-                    .experience(experience)
-                    .build();
-            experienceLikeRepository.save(newLike);
+        return retryOnDeadlock(() -> {
+            if (experienceLikeRepository.deleteByUserIdAndExperienceId(userId, experienceId) > 0) {
+                return false;
+            }
+            try {
+                experienceLikeRepository.save(ExperienceLike.builder().user(user).experience(experience).build());
+            } catch (DataIntegrityViolationException alreadyLiked) {
+                // 동시에 들어온 다른 요청이 먼저 저장함 → 결과적으로 좋아요 상태
+            }
             return true;
-        }
+        });
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public boolean toggleHostLike(Long userId, Long hostId) {
         User user = findUserById(userId);
         Host host = findHostById(hostId);
 
-        // 이미 '좋아요'를 눌렀는지 확인
-        Optional<HostLike> like = hostLikeRepository.findByUserAndHost(user, host);
-
-        if (like.isPresent()) {
-            hostLikeRepository.delete(like.get());
-            return false;
-        } else {
-            HostLike newLike = HostLike.builder()
-                    .user(user)
-                    .host(host)
-                    .build();
-            hostLikeRepository.save(newLike);
+        return retryOnDeadlock(() -> {
+            if (hostLikeRepository.deleteByUserIdAndHostId(userId, hostId) > 0) {
+                return false;
+            }
+            try {
+                hostLikeRepository.save(HostLike.builder().user(user).host(host).build());
+            } catch (DataIntegrityViolationException alreadyLiked) {
+                // 동시에 들어온 다른 요청이 먼저 저장함 → 결과적으로 좋아요 상태
+            }
             return true;
+        });
+    }
+
+    private <T> T retryOnDeadlock(Supplier<T> action) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return action.get();
+            } catch (PessimisticLockingFailureException deadlock) { // DeadlockLoser, CannotAcquireLock
+                if (attempt >= MAX_DEADLOCK_RETRIES) {
+                    throw deadlock;
+                }
+                try {
+                    Thread.sleep(ThreadLocalRandom.current().nextLong(5, 30)); // 재충돌을 줄이는 짧은 랜덤 대기
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw deadlock;
+                }
+            }
         }
     }
 

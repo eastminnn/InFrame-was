@@ -9,11 +9,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
+// 한 유저는 한 호스트에 좋아요 하나 (동시 요청에도 DB가 보장)
+@Table(uniqueConstraints = @UniqueConstraint(name = "uk_host_like_user_host", columnNames = {"user_id", "host_id"}))
 @Getter
 @NoArgsConstructor
 public class HostLike {
