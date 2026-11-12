@@ -10,6 +10,9 @@ public enum ErrorCode {
     // 서버 관련 오류
     INTERNAL_SERVER_ERROR(500, "내부 서버 오류입니다."),
 
+    // 인증 관련 오류
+    UNAUTHORIZED(401, "로그인이 필요합니다."),
+
     // 유저 관련 오류
     USER_NOT_FOUND(404, "해당 유저를 찾을 수 없습니다."),
     FORBIDDEN_ACCESS(403, "해당 유저는 권한이 없습니다."),
