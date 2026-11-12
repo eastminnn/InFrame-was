@@ -74,7 +74,9 @@ public class ExperienceService {
                 .orElseThrow(() -> new CustomException(ErrorCode.EXPERIENCE_NOT_FOUND));
 
         // 2. 권한 확인
-        if (user.getRole() != Role.HOST || !Objects.equals(experience.getHost().getId(), user.getHost().getId())) {
+        Host requester = user.getHost();
+        if (user.getRole() != Role.HOST || requester == null
+                || !Objects.equals(experience.getHost().getId(), requester.getId())) {
             throw new CustomException(ErrorCode.FORBIDDEN_ACCESS);
         }
 

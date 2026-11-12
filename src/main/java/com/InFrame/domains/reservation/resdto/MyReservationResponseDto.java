@@ -66,7 +66,6 @@ public record MyReservationResponseDto(
             imageUrl = experience.getImageUrls().stream().findFirst().orElse(null);
         }
 
-        int TotalParticipants = reservation.getNumAdults() + reservation.getNumChildren();
 
         return new MyReservationResponseDto(
                 reservation.getId(),
@@ -80,7 +79,7 @@ public record MyReservationResponseDto(
                 experience.getCaution(),
                 reservation.getReservedStartTime(),
                 reservation.getTotalPrice(),
-                TotalParticipants,
+                reservation.getTotalParticipants(),
                 reservation.getCreatedAt(),
                 reviewWritten,
                 isHostLiked

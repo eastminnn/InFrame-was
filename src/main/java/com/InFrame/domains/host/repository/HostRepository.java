@@ -14,6 +14,8 @@ public interface HostRepository extends JpaRepository<Host, Long> {
 
     Optional<Host> findByUser(User user);
 
+    boolean existsByUser(User user);
+
     @Query("SELECT DISTINCT h FROM Host h JOIN FETCH h.experiences")
     List<Host> findAllWithExperiencesForMap();
 

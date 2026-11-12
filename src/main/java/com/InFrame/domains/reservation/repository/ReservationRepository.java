@@ -52,6 +52,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     List<Reservation> findAllByStatus(ReservationStatus status);
 
+    List<Reservation> findAllByUserAndStatus(User user, ReservationStatus status);
+
     // 유저가 예약한 내역 수
     long countByUser(User user);
 

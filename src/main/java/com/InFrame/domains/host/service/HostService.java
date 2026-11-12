@@ -46,7 +46,9 @@ public class HostService {
 
     // 호스트로 변경
     public void changeToHost(User user, HostRequestDto hostRequestDto) {
-        if (user.getRole() == Role.HOST) {
+        // role 만 보면 'USER 로 전환한 기존 호스트'를 놓친다 → 호스트 정보 존재 여부로 확인
+        // 외부 사업자 조회 API 호출 전에 차단
+        if (user.getRole() == Role.HOST || hostRepository.existsByUser(user)) {
             throw new CustomException(ErrorCode.USER_ALREADY_HOST);
         }
 
@@ -75,7 +77,8 @@ public class HostService {
     @Transactional
     public String uploadCompanyLogo(User user, MultipartFile file) {
         // 1. 호스트 정보 가져오기
-        Host host = user.getHost();
+        Host host = hostRepository.findByUser(user)
+                .orElseThrow(() -> new CustomException(ErrorCode.HOST_INFO_NOT_FOUND));
 
         // 2. 기존 로고 이미지가 있다면 S3에서 삭제
         String oldLogoUrl = host.getCompanyLogoUrl();

@@ -18,6 +18,7 @@ public enum ErrorCode {
     FORBIDDEN_ACCESS(403, "해당 유저는 권한이 없습니다."),
     HOST_NOT_FOUND(404, "해당 유저의 호스트 정보를 찾을 수 없습니다."),
     HOST_INFO_NOT_FOUND(404, "호스트 정보가 등록되어 있지 않습니다."),
+    HOST_WITHDRAWAL_NOT_ALLOWED(409, "호스트 정보가 등록된 계정은 탈퇴할 수 없습니다. 고객센터로 문의해주세요."),
 
     // 회원가입, 로그인 오류
     EMAIL_ALREADY_EXIST(409, "해당 이메일은 이미 존재합니다."),
@@ -36,6 +37,7 @@ public enum ErrorCode {
     INVALID_PARTICIPANT_COUNT(400, "예약 인원은 1명 이상이어야 합니다."),
     RESERVATION_ON_CLOSED_DAY(400, "체험 휴무일에는 예약할 수 없습니다."),
     INVALID_RESERVATION_TIME(400, "선택한 시간은 예약 가능한 시간이 아닙니다."),
+    RESERVATION_IN_PAST(400, "이미 지난 시간은 예약할 수 없습니다."),
     RESERVATION_CAPACITY_EXCEEDED(400, "최대 예약 가능 인원을 초과했습니다."),
     RESERVATION_NOT_FOUND(404, "해당 예약을 찾을 수 없습니다."),
     RESERVATION_NOT_CANCELLABLE(409, "예약 취소가 불가능한 상태입니다."),
