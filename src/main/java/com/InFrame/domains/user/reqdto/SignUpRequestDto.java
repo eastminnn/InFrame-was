@@ -6,7 +6,6 @@ import com.InFrame.domains.user.entity.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 @Schema(description = "회원가입 요청 DTO")
@@ -27,19 +26,16 @@ public record SignUpRequestDto(
 
         @Schema(description = "사용자 이름", example = "홍길동")
         @NotBlank(message = "이름은 필수 입력입니다.")
-        String name,
-
-        @Schema(description = "역할", example = "USER")
-        @NotNull(message = "역할 지정은 필수 사항입니다.")
-        Role role
+        String name
 ) {
+    // 가입은 항상 USER. 호스트 전환은 사업자번호 검증을 거치는 /api/v1/host/update 로만 가능
     public User toEntity(String encodedPassword) {
         return User.builder()
                 .email(email)
                 .password(encodedPassword)
                 .nickname(nickname)
                 .name(name)
-                .role(role)
+                .role(Role.USER)
                 .build();
     }
 }

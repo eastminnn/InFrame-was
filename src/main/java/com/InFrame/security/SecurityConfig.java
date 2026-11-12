@@ -4,6 +4,7 @@ import com.InFrame.security.handler.SecurityErrorResponder;
 import com.InFrame.security.jwt.JwtAuthFilter;
 import com.InFrame.security.jwt.JwtUtil;
 import com.InFrame.security.oauth2.CustomOAuth2UserService;
+import com.InFrame.security.oauth2.OAuth2LoginFailureHandler;
 import com.InFrame.security.oauth2.OAuth2LoginSuccessHandler;
 import com.InFrame.security.userdetails.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class SecurityConfig {
     private final CorsConfigurationSource corsConfigurationSource;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
     private final SecurityErrorResponder securityErrorResponder;
 
     private static final String[] SWAGGER_URL = {
@@ -93,6 +95,7 @@ public class SecurityConfig {
         http.oauth2Login(oauth -> oauth
                 .userInfoEndpoint(u -> u.userService(customOAuth2UserService))
                 .successHandler(oAuth2LoginSuccessHandler)
+                .failureHandler(oAuth2LoginFailureHandler)
         );
 
         http.addFilterBefore(new JwtAuthFilter(jwtUtil, userDetailsServiceImpl), UsernamePasswordAuthenticationFilter.class);
