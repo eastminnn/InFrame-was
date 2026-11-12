@@ -41,20 +41,10 @@ public class LikeService {
     private final HostLikeRepository hostLikeRepository;
     private final ReviewRepository reviewRepository;
 
-    /*
-     * 좋아요 토글 (동시 요청 대비)
-     * 1) 조건부 DELETE: 지운 행이 있으면 '취소'. 이미 다른 요청이 지웠다면 0건일 뿐 예외 없음
-     * 2) 지운 행이 없으면 INSERT: 동시에 들어온 요청이 먼저 넣었다면 유니크 제약 위반 → '이미 좋아요'로 처리
-     *
-     * 바깥 트랜잭션 없이(NOT_SUPPORTED) 실행한다. 트랜잭션 안에서 제약 위반을 catch 해도
-     * 트랜잭션이 rollback-only 로 표시되어 커밋 시 UnexpectedRollbackException 이 나기 때문.
-     * DELETE / INSERT 는 각각 리포지토리의 트랜잭션에서 실행된다.
-     *
-     * 이미 지워진 행을 DELETE 하면 InnoDB 가 그 자리에 갭 락을 걸고, 이어지는 INSERT 끼리 데드락이 날 수 있다.
-     * 토글은 처음부터 다시 실행해도 안전하므로 데드락이면 재시도한다 (MySQL 권장 방식).
-     */
     private static final int MAX_DEADLOCK_RETRIES = 3;
 
+    // 조건부 DELETE → 지운 게 없으면 INSERT. 중복은 유니크 제약이 막는다.
+    // 제약 위반을 catch 해야 하므로 트랜잭션 밖에서 실행한다 (rollback-only 방지)
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public boolean toggleExperienceLike(Long userId, Long experienceId) {
         User user = findUserById(userId);
@@ -67,7 +57,7 @@ public class LikeService {
             try {
                 experienceLikeRepository.save(ExperienceLike.builder().user(user).experience(experience).build());
             } catch (DataIntegrityViolationException alreadyLiked) {
-                // 동시에 들어온 다른 요청이 먼저 저장함 → 결과적으로 좋아요 상태
+                // 다른 요청이 먼저 저장함 → 좋아요 상태
             }
             return true;
         });
@@ -85,22 +75,23 @@ public class LikeService {
             try {
                 hostLikeRepository.save(HostLike.builder().user(user).host(host).build());
             } catch (DataIntegrityViolationException alreadyLiked) {
-                // 동시에 들어온 다른 요청이 먼저 저장함 → 결과적으로 좋아요 상태
+                // 다른 요청이 먼저 저장함 → 좋아요 상태
             }
             return true;
         });
     }
 
+    // 삭제 직후 같은 키로 동시에 INSERT 하면 중복 검사의 S 락끼리 데드락이 날 수 있어 재시도한다
     private <T> T retryOnDeadlock(Supplier<T> action) {
         for (int attempt = 1; ; attempt++) {
             try {
                 return action.get();
-            } catch (PessimisticLockingFailureException deadlock) { // DeadlockLoser, CannotAcquireLock
+            } catch (PessimisticLockingFailureException deadlock) {
                 if (attempt >= MAX_DEADLOCK_RETRIES) {
                     throw deadlock;
                 }
                 try {
-                    Thread.sleep(ThreadLocalRandom.current().nextLong(5, 30)); // 재충돌을 줄이는 짧은 랜덤 대기
+                    Thread.sleep(ThreadLocalRandom.current().nextLong(5, 30)); // 동시 재시도 충돌 방지
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw deadlock;

@@ -14,7 +14,7 @@ import java.util.Optional;
 
 public interface HostLikeRepository extends JpaRepository<HostLike, Long> {
 
-    // 조건부 삭제: 이미 지워진 행이면 0 을 반환할 뿐 예외가 나지 않는다 (동시 취소 대비)
+    // 지울 행이 없으면 0 반환 (예외 없음)
     @Transactional
     @Modifying
     @Query("DELETE FROM HostLike hl WHERE hl.user.id = :userId AND hl.host.id = :hostId")
