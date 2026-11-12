@@ -165,6 +165,12 @@ public class ReservationService {
 
     // 예약 요청 유효성 검증
     private void validateReservationRequest(Experience experience, ReservationRequestDto requestDto) {
+        // 지난 시간 확인 (@FutureOrPresent 는 날짜만 검증하므로 오늘의 지난 시간은 여기서 막는다)
+        LocalDateTime startTime = LocalDateTime.of(requestDto.reservationDate(), requestDto.startTime());
+        if (startTime.isBefore(LocalDateTime.now())) {
+            throw new CustomException(ErrorCode.RESERVATION_IN_PAST);
+        }
+
         // 예약 가능 요일 확인
         DayOfWeek dayOfWeek = requestDto.reservationDate().getDayOfWeek();
         if (!experience.getAvailableDaysOfWeek().contains(dayOfWeek)) {

@@ -17,6 +17,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -53,6 +54,9 @@ public class User {
     @Column
     private String profileImageUrl;
 
+    @Column
+    private LocalDateTime deletedAt; // 탈퇴 시각 (소프트 삭제)
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Host host;
 
@@ -68,6 +72,27 @@ public class User {
 
     public void updateProfileImage(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
+    }
+
+    /**
+     * 소프트 삭제: 예약·리뷰는 호스트의 이력이므로 행을 남기고 개인정보만 익명화한다.
+     * 이메일·소셜 ID 를 비워 같은 이메일·소셜 계정으로 재가입할 수 있고, 기존 토큰은 이메일로 조회되지 않아 무효가 된다.
+     */
+    public void withdraw() {
+        this.email = "deleted-" + id + "@withdrawn.inframe";
+        this.nickname = "탈퇴회원_" + id;
+        this.name = "탈퇴회원";
+        this.password = "";
+        this.provider = null;
+        this.providerId = null;
+        this.profileImageUrl = null;
+        this.deletedAt = LocalDateTime.now();
+        this.experienceLikes.clear();
+        this.hostLikes.clear();
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
     public void setId(Long id) {

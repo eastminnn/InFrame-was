@@ -41,7 +41,6 @@ public record ReservationResponseDto(
         LocalDateTime endTime = reservation.getReservedStartTime()
                 .plusHours(reservation.getExperience().getDurationInHours());
 
-        int TotalParticipants = reservation.getNumAdults() + reservation.getNumChildren();
 
         return new ReservationResponseDto(
                 reservation.getId(),
@@ -51,7 +50,7 @@ public record ReservationResponseDto(
                 endTime,
                 reservation.getNumAdults(),
                 reservation.getNumChildren(),
-                TotalParticipants,
+                reservation.getTotalParticipants(),
                 reservation.getTotalPrice(),
                 reservation.getCreatedAt()
         );
