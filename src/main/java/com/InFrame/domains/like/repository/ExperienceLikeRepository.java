@@ -14,7 +14,7 @@ import java.util.Optional;
 
 public interface ExperienceLikeRepository extends JpaRepository<ExperienceLike, Long> {
 
-    // 조건부 삭제: 이미 지워진 행이면 0 을 반환할 뿐 예외가 나지 않는다 (동시 취소 대비)
+    // 지울 행이 없으면 0 반환 (예외 없음)
     @Transactional
     @Modifying
     @Query("DELETE FROM ExperienceLike el WHERE el.user.id = :userId AND el.experience.id = :experienceId")
