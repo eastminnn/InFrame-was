@@ -9,13 +9,14 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
-import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+
+    public static final String EMAIL_ALREADY_REGISTERED = "email_already_registered";
+
     private final UserRepository userRepository;
 
     @Override
@@ -23,61 +24,41 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         OAuth2User oAuth2User = super.loadUser(userRequest);
 
         String provider = userRequest.getClientRegistration().getRegistrationId();
-        Map<String, Object> attributes = oAuth2User.getAttributes();
+        OAuth2Attributes attributes = OAuth2Attributes.of(provider, oAuth2User.getAttributes());
 
-        String providerId = null;
-        String email = null;
-        String name = null;
+        return new CustomOAuth2User(findOrRegister(attributes), oAuth2User.getAttributes());
+    }
 
-        if (provider.equals("kakao")) {
-            Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
-            Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
+    /**
+     * 같은 소셜 계정(provider + providerId)이면 로그인, 처음이면 가입.
+     * 이메일이 같은 다른 계정(로컬 가입 또는 다른 소셜)이 있으면 자동 연결하지 않는다.
+     * → 소셜 계정 이메일만으로 남의 계정에 로그인되는 것을 막음
+     */
+    @Transactional
+    public User findOrRegister(OAuth2Attributes attributes) {
+        return userRepository.findByProviderAndProviderId(attributes.provider(), attributes.providerId())
+                .orElseGet(() -> register(attributes));
+    }
 
-            providerId = attributes.get("id").toString();
-            email = (String) kakaoAccount.get("email");
-            name = (String) profile.get("nickname");
-
-        } else if (provider.equals("naver")) {
-            Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-
-            providerId = response.get("id").toString();
-            email = response.get("email").toString();
-            name = response.get("name").toString();
+    private User register(OAuth2Attributes attributes) {
+        if (userRepository.existsByEmail(attributes.email())) {
+            throw OAuth2Attributes.error(EMAIL_ALREADY_REGISTERED, "이미 다른 방식으로 가입된 이메일입니다.");
         }
 
-        Optional<User> optionalUser = userRepository.findByProviderAndProviderId(provider, providerId);
-        User user;
-
-        if (optionalUser.isPresent()) {
-            // 1. provider와 providerId로 유저를 찾음 (기존 소셜 로그인 유저)
-            user = optionalUser.get();
-        } else {
-            // 2. providerId로는 못찾음 -> 이메일로 다시 찾아봄
-            Optional<User> optionalUserByEmail = userRepository.findByEmail(email);
-
-            if (optionalUserByEmail.isPresent()) {
-                // 3. 이메일이 이미 존재함 (기존 계정으로 로그인 처리)
-                user = optionalUserByEmail.get();
-            } else {
-                // 4. 정말 새로운 유저는 회원가입
-                String nickname = provider + "_" + providerId.substring(0, 6);
-                while (userRepository.findByNickname(nickname).isPresent()) {
-                    nickname += (int)(Math.random() * 10);
-                }
-
-                user = User.builder()
-                        .email(email)
-                        .password("")
-                        .nickname(nickname)
-                        .name(name)
-                        .role(Role.USER)
-                        .provider(provider)
-                        .providerId(providerId)
-                        .build();
-                user = userRepository.save(user); // 신규 저장 (ID 받아오기)
-            }
+        String providerId = attributes.providerId();
+        String nickname = attributes.provider() + "_" + providerId.substring(0, Math.min(6, providerId.length()));
+        while (userRepository.existsByNickname(nickname)) {
+            nickname += (int) (Math.random() * 10);
         }
 
-        return new CustomOAuth2User(user, attributes);
+        return userRepository.save(User.builder()
+                .email(attributes.email())
+                .password("")
+                .nickname(nickname)
+                .name(attributes.name() != null ? attributes.name() : nickname)
+                .role(Role.USER)
+                .provider(attributes.provider())
+                .providerId(providerId)
+                .build());
     }
 }

@@ -33,8 +33,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         );
 
 
+        // fragment(#)는 브라우저가 서버로 보내지 않아 액세스 로그, Referer, 프록시에 토큰이 남지 않음
         String finalRedirectUrl = UriComponentsBuilder.fromUriString(frontendRedirectUri)
-                .queryParam("token", accessToken)
+                .fragment("token=" + accessToken)
                 .build().toUriString();
 
         response.sendRedirect(finalRedirectUrl);
