@@ -99,6 +99,11 @@ api:
     validate-url: "https://api.odcloud.kr/api/nts-businessman/v1/status"
 
 # ========= 모니터링 =========
+server:
+  tomcat:
+    mbeanregistry:
+      enabled: true # 톰캣 스레드 지표(tomcat_threads_*) 수집
+
 management:
   endpoints:
     web:
