@@ -59,6 +59,7 @@ public class SecurityConfig {
                 .requestMatchers(SWAGGER_URL).permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/prometheus").permitAll()
 
                 // 인증/회원가입
                 .requestMatchers("/api/v1/auth/**").permitAll()
