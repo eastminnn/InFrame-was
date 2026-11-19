@@ -10,6 +10,12 @@ public enum ErrorCode {
     // 서버 관련 오류
     INTERNAL_SERVER_ERROR(500, "내부 서버 오류입니다."),
 
+    // 요청 형식 오류
+    BAD_REQUEST(400, "잘못된 요청입니다."),
+    PATH_NOT_FOUND(404, "요청한 경로를 찾을 수 없습니다."),
+    METHOD_NOT_ALLOWED(405, "지원하지 않는 HTTP 메서드입니다."),
+    UNSUPPORTED_MEDIA_TYPE(415, "지원하지 않는 Content-Type입니다."),
+
     // 인증 관련 오류
     UNAUTHORIZED(401, "로그인이 필요합니다."),
 
