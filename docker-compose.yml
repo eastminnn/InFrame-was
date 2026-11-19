@@ -1,6 +1,6 @@
 # 로컬 개발/평가용 인프라
 # 실행: docker compose up -d
-# 포트는 다른 로컬 컨테이너와 겹치지 않도록 3307 / 5433 사용
+# 포트는 다른 로컬 컨테이너와 겹치지 않도록 3307 / 5433 / 9090 / 3001 사용
 services:
   mysql:
     image: mysql:8.0
@@ -37,6 +37,40 @@ services:
       interval: 5s
       retries: 20
 
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: inframe-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      # k6 결과를 remote write 로 받기 위해 필요
+      - --web.enable-remote-write-receiver
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - inframe-prometheus-data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: inframe-grafana
+    environment:
+      # 로컬 전용: 로그인 없이 조회
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - inframe-grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 volumes:
   inframe-mysql-data:
   inframe-pg-data:
+  inframe-prometheus-data:
+  inframe-grafana-data:
