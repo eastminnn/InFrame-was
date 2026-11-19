@@ -1,0 +1,11 @@
+global:
+  # 부하 테스트가 짧아서 기본값(1m)보다 촘촘하게 수집
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: inframe-was
+    metrics_path: /actuator/prometheus
+    static_configs:
+      # 앱은 컨테이너가 아니라 로컬에서 8081 로 실행
+      - targets: ["host.docker.internal:8081"]

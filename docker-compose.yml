@@ -1,6 +1,6 @@
 # 로컬 개발/평가용 인프라
 # 실행: docker compose up -d
-# 포트는 다른 로컬 컨테이너와 겹치지 않도록 3307 / 5433 사용
+# 포트는 다른 로컬 컨테이너와 겹치지 않도록 3307 / 5433 / 9090 / 3001 사용
 services:
   mysql:
     image: mysql:8.0
@@ -37,6 +37,22 @@ services:
       interval: 5s
       retries: 20
 
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: inframe-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      # k6 결과를 remote write 로 받기 위해 필요
+      - --web.enable-remote-write-receiver
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - inframe-prometheus-data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   inframe-mysql-data:
   inframe-pg-data:
+  inframe-prometheus-data:
