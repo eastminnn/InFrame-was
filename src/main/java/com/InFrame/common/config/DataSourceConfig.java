@@ -29,10 +29,12 @@ public class DataSourceConfig {
     public DataSource mainDataSource(
             @Qualifier("mainDataSourceProperties") DataSourceProperties properties
     ) {
-        return properties
+        HikariDataSource dataSource = properties
                 .initializeDataSourceBuilder()
                 .type(HikariDataSource.class)
                 .build();
+        dataSource.setPoolName("mysql"); // 메트릭의 pool 라벨
+        return dataSource;
     }
 
     // pgvector용 PostgreSQL
@@ -46,10 +48,12 @@ public class DataSourceConfig {
     public DataSource pgDataSource(
             @Qualifier("pgDataSourceProperties") DataSourceProperties properties
     ) {
-        return properties
+        HikariDataSource dataSource = properties
                 .initializeDataSourceBuilder()
                 .type(HikariDataSource.class)
                 .build();
+        dataSource.setPoolName("pgvector"); // 메트릭의 pool 라벨
+        return dataSource;
     }
 
     @Bean(name = "pgJdbcTemplate")
