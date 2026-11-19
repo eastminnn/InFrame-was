@@ -1,0 +1,8 @@
+apiVersion: 1
+
+providers:
+  - name: inframe
+    folder: InFrame
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

@@ -52,7 +52,25 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: inframe-grafana
+    environment:
+      # 로컬 전용: 로그인 없이 조회
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - inframe-grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 volumes:
   inframe-mysql-data:
   inframe-pg-data:
   inframe-prometheus-data:
+  inframe-grafana-data:
