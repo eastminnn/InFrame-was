@@ -3,10 +3,13 @@ package com.InFrame.common.exception;
 import com.InFrame.common.exception.error.ErrorCode;
 import com.InFrame.common.exception.error.ErrorDto;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -26,12 +29,38 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDto, HttpStatusCode.valueOf(errorCode.getStatus()));
     }
 
+    // 파라미터 타입 변환 실패, 읽을 수 없는 요청 본문(깨진 JSON 등)
+    @ExceptionHandler({TypeMismatchException.class, HttpMessageNotReadableException.class})
+    protected ResponseEntity<?> badRequestHandler(Exception e) {
+        log.warn("BAD_REQUEST: {}", e.getMessage());
+        ErrorDto errorDto = new ErrorDto(ErrorCode.BAD_REQUEST.getStatus(), ErrorCode.BAD_REQUEST.getMessage());
+        return new ResponseEntity<>(errorDto, HttpStatus.BAD_REQUEST);
+    }
+
     // 일반 예외처리
     @ExceptionHandler
     protected ResponseEntity<?> customServerException(Exception e){
+        // Spring MVC 예외(없는 경로, 메서드 불일치, 파라미터 누락 등)는 자체 상태 코드를 가진다
+        if (e instanceof ErrorResponse errorResponse && errorResponse.getStatusCode().is4xxClientError()) {
+            return clientErrorResponse(errorResponse, e);
+        }
+
         log.error("INTERNAL_SERVER_ERROR", e);
         ErrorDto errorDto = new ErrorDto(ErrorCode.INTERNAL_SERVER_ERROR.getStatus(), ErrorCode.INTERNAL_SERVER_ERROR.getMessage());
         return new ResponseEntity<>(errorDto, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private ResponseEntity<?> clientErrorResponse(ErrorResponse errorResponse, Exception e) {
+        int status = errorResponse.getStatusCode().value();
+        log.warn("CLIENT_ERROR {}: {}", status, e.getMessage());
+        ErrorCode errorCode = switch (status) {
+            case 404 -> ErrorCode.PATH_NOT_FOUND;
+            case 405 -> ErrorCode.METHOD_NOT_ALLOWED;
+            case 415 -> ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+            default -> ErrorCode.BAD_REQUEST;
+        };
+        // 405 의 Allow 처럼 스프링이 붙여둔 헤더는 그대로 전달
+        return new ResponseEntity<>(new ErrorDto(status, errorCode.getMessage()), errorResponse.getHeaders(), status);
     }
 
     // 메소드 인자 타당성 예외 처리
