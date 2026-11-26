@@ -73,8 +73,9 @@ public class ReservationService {
     // 사용자가 체험을 예약
     @Transactional
     public ReservationResponseDto createReservation(User user, ReservationRequestDto requestDto) {
-        // 1. 체험 정보 조회
-        Experience experience = experienceRepository.findById(requestDto.experienceId())
+        // 1. 체험 조회 + 락: 같은 체험의 예약 요청은 커밋될 때까지 여기서 한 줄로 기다린다
+        //    트랜잭션의 첫 조회여야 이후 중복 확인이 앞 요청의 커밋 결과를 본다
+        Experience experience = experienceRepository.findByIdForUpdate(requestDto.experienceId())
                 .orElseThrow(() -> new CustomException(ErrorCode.EXPERIENCE_NOT_FOUND));
 
         // 2. 예약 요청 유효성 검증
