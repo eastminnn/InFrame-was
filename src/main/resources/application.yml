@@ -92,6 +92,9 @@ jwt:
 app:
   oauth2:
     redirect-url: ${OAUTH2_REDIRECT_URL:http://localhost:3000/oauth-redirect}
+  db:
+    # 행 락 대기 상한(초). MySQL 기본값 50초 동안 커넥션을 붙잡지 않도록 줄인다
+    lock-wait-timeout-seconds: 3
 
 api:
   public-data:
