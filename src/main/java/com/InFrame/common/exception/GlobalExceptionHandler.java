@@ -4,6 +4,7 @@ import com.InFrame.common.exception.error.ErrorCode;
 import com.InFrame.common.exception.error.ErrorDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,14 @@ public class GlobalExceptionHandler {
         log.warn("BAD_REQUEST: {}", e.getMessage());
         ErrorDto errorDto = new ErrorDto(ErrorCode.BAD_REQUEST.getStatus(), ErrorCode.BAD_REQUEST.getMessage());
         return new ResponseEntity<>(errorDto, HttpStatus.BAD_REQUEST);
+    }
+
+    // 락 대기 시간 초과, 데드락(재시도까지 실패). 다시 시도하면 성공할 수 있으므로 500 이 아닌 503
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    protected ResponseEntity<?> lockFailureHandler(PessimisticLockingFailureException e) {
+        log.warn("LOCK_WAIT_TIMEOUT: {}", e.getMostSpecificCause().getMessage());
+        ErrorDto errorDto = new ErrorDto(ErrorCode.LOCK_WAIT_TIMEOUT.getStatus(), ErrorCode.LOCK_WAIT_TIMEOUT.getMessage());
+        return new ResponseEntity<>(errorDto, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     // 일반 예외처리

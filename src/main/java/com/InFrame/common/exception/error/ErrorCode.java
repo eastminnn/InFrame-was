@@ -15,6 +15,7 @@ public enum ErrorCode {
     PATH_NOT_FOUND(404, "요청한 경로를 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED(405, "지원하지 않는 HTTP 메서드입니다."),
     UNSUPPORTED_MEDIA_TYPE(415, "지원하지 않는 Content-Type입니다."),
+    LOCK_WAIT_TIMEOUT(503, "요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해주세요."),
 
     // 인증 관련 오류
     UNAUTHORIZED(401, "로그인이 필요합니다."),
